@@ -1,30 +1,73 @@
-/**
- * UseCase1HotelBookingApp
- *
- * This class represents the entry point of the My Stay Hotel Booking System.
- * It demonstrates how a Java application starts execution and prints
- * a welcome message to the console.
- *
- * @author Ritvik
- * @version 1.0
- */
+abstract class RoomUC2 {
+
+    private int beds;
+    private double price;
+
+    public RoomUC2(int beds, double price) {
+        this.beds = beds;
+        this.price = price;
+    }
+
+    public int getBeds() {
+        return beds;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    public abstract String getRoomType();
+}
+
+class SingleRoomUC2 extends RoomUC2 {
+
+    public SingleRoomUC2() {
+        super(1, 1000);
+    }
+
+    public String getRoomType() {
+        return "Single Room";
+    }
+}
+
+class DoubleRoomUC2 extends RoomUC2 {
+
+    public DoubleRoomUC2() {
+        super(2, 2000);
+    }
+
+    public String getRoomType() {
+        return "Double Room";
+    }
+}
+
+class SuiteRoomUC2 extends RoomUC2 {
+
+    public SuiteRoomUC2() {
+        super(3, 5000);
+    }
+
+    public String getRoomType() {
+        return "Suite Room";
+    }
+}
+
 public class BookMyStayApp {
 
-    /**
-     * Main method – entry point of the Java application.
-     * The JVM starts execution from this method.
-     *
-     * @param args Command line arguments
-     */
     public static void main(String[] args) {
 
-        // Printing welcome message to console
-        System.out.println("=================================");
-        System.out.println("     Welcome to My Stay App      ");
-        System.out.println("   Hotel Booking System v1.0     ");
-        System.out.println("=================================");
+        RoomUC2 single = new SingleRoomUC2();
+        RoomUC2 dbl = new DoubleRoomUC2();
+        RoomUC2 suite = new SuiteRoomUC2();
 
-        System.out.println("Application started successfully!");
+        int singleAvailable = 5;
+        int doubleAvailable = 3;
+        int suiteAvailable = 2;
 
+        System.out.println("=== Room Details ===");
+
+        System.out.println(single.getRoomType() + " Available: " + singleAvailable);
+        System.out.println(dbl.getRoomType() + " Available: " + doubleAvailable);
+        System.out.println(suite.getRoomType() + " Available: " + suiteAvailable);
     }
 }
