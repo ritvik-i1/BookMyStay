@@ -1,74 +1,40 @@
-import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Queue;
 
-abstract class RoomUC4 {
+class ReservationUC5 {
 
-    private int beds;
-    private double price;
+    private String guestName;
+    private String roomType;
 
-    public RoomUC4(int beds, double price) {
-        this.beds = beds;
-        this.price = price;
+    public ReservationUC5(String guestName, String roomType) {
+        this.guestName = guestName;
+        this.roomType = roomType;
     }
 
-    public int getBeds() {
-        return beds;
-    }
-
-    public double getPrice() {
-        return price;
-    }
-
-    public abstract String getRoomType();
-}
-
-class SingleRoomUC4 extends RoomUC4 {
-
-    public SingleRoomUC4() {
-        super(1, 1000);
-    }
-
-    public String getRoomType() {
-        return "Single Room";
+    public void display() {
+        System.out.println(guestName + " requested " + roomType);
     }
 }
 
-class DoubleRoomUC4 extends RoomUC4 {
+class BookingQueueUC5 {
 
-    public DoubleRoomUC4() {
-        super(2, 2000);
+    private Queue<ReservationUC5> queue;
+
+    public BookingQueueUC5() {
+        queue = new LinkedList<>();
     }
 
-    public String getRoomType() {
-        return "Double Room";
-    }
-}
-
-class SuiteRoomUC4 extends RoomUC4 {
-
-    public SuiteRoomUC4() {
-        super(3, 5000);
+    public void addRequest(ReservationUC5 r) {
+        queue.add(r);
     }
 
-    public String getRoomType() {
-        return "Suite Room";
-    }
-}
+    public void displayQueue() {
 
-class RoomInventoryUC4 {
+        System.out.println("=== Booking Queue ===");
 
-    private HashMap<String, Integer> inventory;
-
-    public RoomInventoryUC4() {
-
-        inventory = new HashMap<>();
-
-        inventory.put("Single Room", 5);
-        inventory.put("Double Room", 3);
-        inventory.put("Suite Room", 0);
-    }
-
-    public int getAvailability(String roomType) {
-        return inventory.getOrDefault(roomType, 0);
+        for (ReservationUC5 r : queue) {
+            r.display();
+        }
     }
 }
 
@@ -76,28 +42,12 @@ public class BookMyStayApp {
 
     public static void main(String[] args) {
 
-        RoomUC4[] rooms = {
-                new SingleRoomUC4(),
-                new DoubleRoomUC4(),
-                new SuiteRoomUC4()
-        };
+        BookingQueueUC5 queue = new BookingQueueUC5();
 
-        RoomInventoryUC4 inventory = new RoomInventoryUC4();
+        queue.addRequest(new ReservationUC5("Ravi", "Single Room"));
+        queue.addRequest(new ReservationUC5("Priya", "Double Room"));
+        queue.addRequest(new ReservationUC5("Arjun", "Suite Room"));
 
-        System.out.println("=== Available Rooms ===");
-
-        for (RoomUC4 room : rooms) {
-
-            int available = inventory.getAvailability(room.getRoomType());
-
-            if (available > 0) {
-
-                System.out.println(room.getRoomType());
-                System.out.println("Beds: " + room.getBeds());
-                System.out.println("Price: ₹" + room.getPrice());
-                System.out.println("Available: " + available);
-                System.out.println();
-            }
-        }
+        queue.displayQueue();
     }
 }
