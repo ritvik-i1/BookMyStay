@@ -1,153 +1,135 @@
 import java.util.*;
 
-// Reservation class (represents a confirmed booking)
+// Custom Exception for Invalid Booking
+class InvalidBookingException extends Exception {
+    public InvalidBookingException(String message) {
+        super(message);
+    }
+}
+
+// Reservation class
 class Reservation {
     private String reservationId;
     private String guestName;
     private String roomType;
-    private double baseCost;
 
-    public Reservation(String reservationId, String guestName, String roomType, double baseCost) {
+    public Reservation(String reservationId, String guestName, String roomType) {
         this.reservationId = reservationId;
         this.guestName = guestName;
         this.roomType = roomType;
-        this.baseCost = baseCost;
-    }
-
-    public String getReservationId() {
-        return reservationId;
-    }
-
-    public String getGuestName() {
-        return guestName;
-    }
-
-    public String getRoomType() {
-        return roomType;
-    }
-
-    public double getBaseCost() {
-        return baseCost;
     }
 
     @Override
     public String toString() {
         return "Reservation ID: " + reservationId +
                 ", Guest: " + guestName +
-                ", Room: " + roomType +
-                ", Cost: ₹" + baseCost;
+                ", Room Type: " + roomType;
     }
 }
 
-// Booking History Manager
-class BookingHistoryManager {
+// Inventory Manager (guards system state)
+class InventoryManager {
+    private Map<String, Integer> roomInventory;
 
-    // List to maintain order of confirmed bookings
-    private List<Reservation> bookingHistory;
-
-    public BookingHistoryManager() {
-        bookingHistory = new ArrayList<>();
+    public InventoryManager() {
+        roomInventory = new HashMap<>();
+        roomInventory.put("Single", 2);
+        roomInventory.put("Double", 2);
+        roomInventory.put("Suite", 1);
     }
 
-    // Store reservation
-    public void addReservation(Reservation reservation) {
-        bookingHistory.add(reservation);
+    public void validateRoomType(String roomType) throws InvalidBookingException {
+        if (!roomInventory.containsKey(roomType)) {
+            throw new InvalidBookingException("Invalid room type selected.");
+        }
     }
 
-    // Retrieve all reservations
-    public List<Reservation> getAllReservations() {
-        return bookingHistory;
+    public void validateAvailability(String roomType) throws InvalidBookingException {
+        if (roomInventory.get(roomType) <= 0) {
+            throw new InvalidBookingException("No rooms available for selected type.");
+        }
+    }
+
+    public void bookRoom(String roomType) {
+        roomInventory.put(roomType, roomInventory.get(roomType) - 1);
+    }
+
+    public void displayInventory() {
+        System.out.println("Current Room Availability: " + roomInventory);
     }
 }
 
-// Reporting Service (separate from storage)
-class ReportingService {
+// Validator class (Fail-Fast)
+class BookingValidator {
 
-    // Generate summary report
-    public void generateReport(List<Reservation> reservations) {
+    public static void validateInput(String reservationId, String guestName, String roomType)
+            throws InvalidBookingException {
 
-        if (reservations.isEmpty()) {
-            System.out.println("No bookings found.");
-            return;
+        if (reservationId == null || reservationId.isEmpty()) {
+            throw new InvalidBookingException("Reservation ID cannot be empty.");
         }
 
-        System.out.println("\n===== Booking History Report =====");
-
-        double totalRevenue = 0;
-
-        for (Reservation r : reservations) {
-            System.out.println(r);
-            totalRevenue += r.getBaseCost();
+        if (guestName == null || guestName.isEmpty()) {
+            throw new InvalidBookingException("Guest name cannot be empty.");
         }
 
-        System.out.println("----------------------------------");
-        System.out.println("Total Bookings: " + reservations.size());
-        System.out.println("Total Revenue: ₹" + totalRevenue);
+        if (roomType == null || roomType.isEmpty()) {
+            throw new InvalidBookingException("Room type cannot be empty.");
+        }
     }
 }
 
 // Main Class
-public class UseCase8BookingHistoryReport {
+public class BookMyStayApp {
 
     public static void main(String[] args) {
 
         Scanner sc = new Scanner(System.in);
-        BookingHistoryManager historyManager = new BookingHistoryManager();
-        ReportingService reportingService = new ReportingService();
+        InventoryManager inventory = new InventoryManager();
 
         while (true) {
-            System.out.println("\n1. Add Reservation");
-            System.out.println("2. View Booking History");
-            System.out.println("3. Generate Report");
-            System.out.println("4. Exit");
+            try {
+                System.out.println("\n--- Booking Menu ---");
 
-            int choice = sc.nextInt();
-            sc.nextLine(); // consume newline
+                System.out.print("Enter Reservation ID: ");
+                String id = sc.nextLine();
 
-            switch (choice) {
+                System.out.print("Enter Guest Name: ");
+                String name = sc.nextLine();
 
-                case 1:
-                    System.out.print("Enter Reservation ID: ");
-                    String id = sc.nextLine();
+                System.out.print("Enter Room Type (Single/Double/Suite): ");
+                String roomType = sc.nextLine();
 
-                    System.out.print("Enter Guest Name: ");
-                    String name = sc.nextLine();
+                // Step 1: Input validation
+                BookingValidator.validateInput(id, name, roomType);
 
-                    System.out.print("Enter Room Type: ");
-                    String room = sc.nextLine();
+                // Step 2: Business validation
+                inventory.validateRoomType(roomType);
+                inventory.validateAvailability(roomType);
 
-                    System.out.print("Enter Cost: ");
-                    double cost = sc.nextDouble();
+                // Step 3: Booking
+                inventory.bookRoom(roomType);
 
-                    Reservation reservation = new Reservation(id, name, room, cost);
-                    historyManager.addReservation(reservation);
+                Reservation reservation = new Reservation(id, name, roomType);
 
-                    System.out.println("Reservation added successfully!");
-                    break;
+                System.out.println("Booking Successful!");
+                System.out.println(reservation);
 
-                case 2:
-                    List<Reservation> all = historyManager.getAllReservations();
+                inventory.displayInventory();
 
-                    if (all.isEmpty()) {
-                        System.out.println("No bookings yet.");
-                    } else {
-                        System.out.println("\nBooking History:");
-                        for (Reservation r : all) {
-                            System.out.println(r);
-                        }
-                    }
-                    break;
+            } catch (InvalidBookingException e) {
+                // Graceful failure handling
+                System.out.println("Booking Failed: " + e.getMessage());
+            } catch (Exception e) {
+                System.out.println("Unexpected error occurred.");
+            }
 
-                case 3:
-                    reportingService.generateReport(historyManager.getAllReservations());
-                    break;
+            System.out.println("\nDo you want to continue? (yes/no)");
+            String cont = sc.nextLine();
 
-                case 4:
-                    System.out.println("Exiting...");
-                    return;
-
-                default:
-                    System.out.println("Invalid choice!");
+            if (!cont.equalsIgnoreCase("yes")) {
+                System.out.println("Exiting system...");
+                break;
             }
         }
     }
