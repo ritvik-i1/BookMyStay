@@ -1,126 +1,154 @@
+import java.io.*;
 import java.util.*;
 
-// Booking Request
-class BookingRequest {
+// Reservation class (Serializable)
+class Reservation implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    String reservationId;
     String guestName;
     String roomType;
 
-    public BookingRequest(String guestName, String roomType) {
+    public Reservation(String reservationId, String guestName, String roomType) {
+        this.reservationId = reservationId;
         this.guestName = guestName;
         this.roomType = roomType;
     }
-}
 
-// Shared Booking Queue
-class BookingQueue {
-    private Queue<BookingRequest> queue = new LinkedList<>();
-
-    public synchronized void addRequest(BookingRequest request) {
-        queue.add(request);
-        notifyAll();
-    }
-
-    public synchronized BookingRequest getRequest() {
-        while (queue.isEmpty()) {
-            try {
-                wait();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-        return queue.poll();
+    @Override
+    public String toString() {
+        return reservationId + " | " + guestName + " | " + roomType;
     }
 }
 
-// Inventory Manager (shared resource)
-class InventoryManager {
+// System State (Inventory + Booking History)
+class SystemState implements Serializable {
+    private static final long serialVersionUID = 1L;
 
-    private Map<String, Integer> inventory = new HashMap<>();
+    Map<String, Integer> inventory;
+    List<Reservation> bookings;
 
-    public InventoryManager() {
-        inventory.put("Single", 2);
-        inventory.put("Double", 2);
-        inventory.put("Suite", 1);
-    }
-
-    // Critical Section
-    public synchronized boolean allocateRoom(String roomType) {
-
-        int available = inventory.getOrDefault(roomType, 0);
-
-        if (available > 0) {
-            inventory.put(roomType, available - 1);
-
-            System.out.println(Thread.currentThread().getName() +
-                    " allocated " + roomType +
-                    " | Remaining: " + (available - 1));
-
-            return true;
-        } else {
-            System.out.println(Thread.currentThread().getName() +
-                    " failed booking " + roomType + " (No rooms)");
-
-            return false;
-        }
-    }
-
-    public void displayInventory() {
-        System.out.println("Final Inventory: " + inventory);
-    }
-}
-
-// Booking Processor Thread
-class BookingProcessor extends Thread {
-
-    private BookingQueue queue;
-    private InventoryManager inventory;
-
-    public BookingProcessor(String name, BookingQueue queue, InventoryManager inventory) {
-        super(name);
-        this.queue = queue;
+    public SystemState(Map<String, Integer> inventory, List<Reservation> bookings) {
         this.inventory = inventory;
+        this.bookings = bookings;
+    }
+}
+
+// Persistence Service
+class PersistenceService {
+
+    private static final String FILE_NAME = "system_state.ser";
+
+    // Save state to file
+    public static void save(SystemState state) {
+        try (ObjectOutputStream oos =
+                     new ObjectOutputStream(new FileOutputStream(FILE_NAME))) {
+
+            oos.writeObject(state);
+            System.out.println("System state saved successfully.");
+
+        } catch (IOException e) {
+            System.out.println("Error saving state: " + e.getMessage());
+        }
     }
 
-    public void run() {
+    // Load state from file
+    public static SystemState load() {
+        try (ObjectInputStream ois =
+                     new ObjectInputStream(new FileInputStream(FILE_NAME))) {
 
-        for (int i = 0; i < 2; i++) {   // each thread processes requests
-            BookingRequest request = queue.getRequest();
+            SystemState state = (SystemState) ois.readObject();
+            System.out.println("System state restored successfully.");
+            return state;
 
-            System.out.println(getName() + " processing booking for " + request.guestName);
-
-            inventory.allocateRoom(request.roomType);
+        } catch (FileNotFoundException e) {
+            System.out.println("No saved data found. Starting fresh.");
+        } catch (Exception e) {
+            System.out.println("Corrupted data. Starting fresh.");
         }
+
+        // Default state if file missing/corrupt
+        Map<String, Integer> defaultInventory = new HashMap<>();
+        defaultInventory.put("Single", 2);
+        defaultInventory.put("Double", 2);
+        defaultInventory.put("Suite", 1);
+
+        return new SystemState(defaultInventory, new ArrayList<>());
     }
 }
 
 // Main Class
 public class BookMyStayApp {
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
 
-        BookingQueue queue = new BookingQueue();
-        InventoryManager inventory = new InventoryManager();
+        Scanner sc = new Scanner(System.in);
 
-        // Simulate guest booking requests
-        queue.addRequest(new BookingRequest("Alice", "Single"));
-        queue.addRequest(new BookingRequest("Bob", "Single"));
-        queue.addRequest(new BookingRequest("Charlie", "Double"));
-        queue.addRequest(new BookingRequest("David", "Double"));
-        queue.addRequest(new BookingRequest("Eve", "Suite"));
+        // Load previous state
+        SystemState state = PersistenceService.load();
 
-        // Multiple processors (threads)
-        BookingProcessor t1 = new BookingProcessor("Processor-1", queue, inventory);
-        BookingProcessor t2 = new BookingProcessor("Processor-2", queue, inventory);
-        BookingProcessor t3 = new BookingProcessor("Processor-3", queue, inventory);
+        Map<String, Integer> inventory = state.inventory;
+        List<Reservation> bookings = state.bookings;
 
-        t1.start();
-        t2.start();
-        t3.start();
+        while (true) {
+            System.out.println("\n1. Book Room");
+            System.out.println("2. View Bookings");
+            System.out.println("3. View Inventory");
+            System.out.println("4. Save & Exit");
 
-        t1.join();
-        t2.join();
-        t3.join();
+            int choice = sc.nextInt();
+            sc.nextLine();
 
-        inventory.displayInventory();
+            switch (choice) {
+
+                case 1:
+                    System.out.print("Enter Reservation ID: ");
+                    String id = sc.nextLine();
+
+                    System.out.print("Enter Guest Name: ");
+                    String name = sc.nextLine();
+
+                    System.out.print("Enter Room Type (Single/Double/Suite): ");
+                    String type = sc.nextLine();
+
+                    int available = inventory.getOrDefault(type, 0);
+
+                    if (available <= 0) {
+                        System.out.println("No rooms available.");
+                        break;
+                    }
+
+                    inventory.put(type, available - 1);
+
+                    Reservation r = new Reservation(id, name, type);
+                    bookings.add(r);
+
+                    System.out.println("Booking successful!");
+                    break;
+
+                case 2:
+                    if (bookings.isEmpty()) {
+                        System.out.println("No bookings found.");
+                    } else {
+                        for (Reservation res : bookings) {
+                            System.out.println(res);
+                        }
+                    }
+                    break;
+
+                case 3:
+                    System.out.println("Inventory: " + inventory);
+                    break;
+
+                case 4:
+                    // Save before exit
+                    PersistenceService.save(new SystemState(inventory, bookings));
+                    System.out.println("Exiting system...");
+                    return;
+
+                default:
+                    System.out.println("Invalid choice!");
+            }
+        }
     }
 }
